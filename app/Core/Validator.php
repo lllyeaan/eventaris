@@ -31,13 +31,19 @@ class Validator
                     case 'min':
                         $min = (int) $ruleValue;
                         if ($value !== null && strlen((string) $value) < $min) {
-                            $this->addError($field, sprintf('Minimum length is %d characters.', $min));
+                            $this->addError(
+                                $field,
+                                sprintf('Panjang minimal %d karakter.', $min)
+                            );
                         }
                         break;
                     case 'max':
                         $max = (int) $ruleValue;
                         if ($value !== null && strlen((string) $value) > $max) {
-                            $this->addError($field, sprintf('Maximum length is %d characters.', $max));
+                            $this->addError(
+                                $field,
+                                sprintf('Panjang maksimal %d karakter.', $max)
+                            );
                         }
                         break;
                     case 'numeric':

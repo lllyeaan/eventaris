@@ -87,6 +87,7 @@ class EventManageController
         }
 
         if (!empty($errors)) {
+            logger('Create event validation errors: ' . json_encode($errors, JSON_THROW_ON_ERROR));
             Session::flash('errors', $errors);
             Session::flash('error', 'Gagal menyimpan event. Silakan periksa kembali input Anda.');
             Session::flashInput($input);
@@ -187,6 +188,7 @@ class EventManageController
         }
 
         if (!empty($errors)) {
+            logger('Update event validation errors: ' . json_encode($errors, JSON_THROW_ON_ERROR));
             Session::flash('errors', $errors);
             Session::flash('error', 'Gagal memperbarui event. Silakan periksa kembali input Anda.');
             Session::flashInput($input);
