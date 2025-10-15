@@ -27,6 +27,7 @@ $statuses = $statuses ?? [];
             'value' => old('description', ''),
             'errors' => $errors['description'] ?? [],
             'attributes' => ['rows' => 6, 'required' => true],
+            'help' => 'Minimal 10 karakter.',
         ];
         include app_path('Views/partials/_form_field.php');
 
@@ -47,6 +48,17 @@ $statuses = $statuses ?? [];
             'value' => old('event_date', ''),
             'errors' => $errors['event_date'] ?? [],
             'attributes' => ['required' => true],
+        ];
+        include app_path('Views/partials/_form_field.php');
+
+        $field = [
+            'name' => 'committee_divisions',
+            'label' => 'Daftar Divisi Panitia',
+            'type' => 'textarea',
+            'value' => old('committee_divisions', ''),
+            'errors' => $errors['committee_divisions'] ?? [],
+            'attributes' => ['rows' => 4],
+            'help' => 'Pisahkan divisi dengan koma atau baris baru.',
         ];
         include app_path('Views/partials/_form_field.php');
 
@@ -72,43 +84,43 @@ $statuses = $statuses ?? [];
         ?>
 
         <div class="grid gap-4 md:grid-cols-2">
-            <div>
-                <label for="registration_start" class="mb-1 block text-sm font-medium text-slate-600">Mulai
-                    Pendaftaran</label>
-                <input type="datetime-local" id="registration_start" name="registration_start"
-                    value="<?= e((string) old('registration_start', '')); ?>"
-                    class="block w-full rounded border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none focus:ring">
-                <?php if (!empty($errors['registration_start'])): ?>
-                <p class="mt-1 text-xs text-rose-600"><?= e($errors['registration_start'][0]); ?></p>
-                <?php endif; ?>
-            </div>
-            <div>
-                <label for="registration_end" class="mb-1 block text-sm font-medium text-slate-600">Akhir
-                    Pendaftaran</label>
-                <input type="datetime-local" id="registration_end" name="registration_end"
-                    value="<?= e((string) old('registration_end', '')); ?>"
-                    class="block w-full rounded border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none focus:ring">
-                <?php if (!empty($errors['registration_end'])): ?>
-                <p class="mt-1 text-xs text-rose-600"><?= e($errors['registration_end'][0]); ?></p>
-                <?php endif; ?>
-            </div>
+            <?php
+            $field = [
+                'name' => 'registration_start',
+                'label' => 'Mulai Pendaftaran',
+                'type' => 'datetime-local',
+                'value' => old('registration_start', ''),
+                'errors' => $errors['registration_start'] ?? [],
+            ];
+            include app_path('Views/partials/_form_field.php');
+
+            $field = [
+                'name' => 'registration_end',
+                'label' => 'Akhir Pendaftaran',
+                'type' => 'datetime-local',
+                'value' => old('registration_end', ''),
+                'errors' => $errors['registration_end'] ?? [],
+            ];
+            include app_path('Views/partials/_form_field.php');
+            ?>
         </div>
 
-        <div class="mt-4">
-            <label for="status" class="mb-1 block text-sm font-medium text-slate-600">Status Open Recruitment</label>
-            <select id="status" name="status"
-                class="block w-full rounded border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none focus:ring"
-                required>
-                <?php foreach ($statuses as $status): ?>
-                <option value="<?= e($status); ?>" <?= old('status', 'draft') === $status ? 'selected' : ''; ?>>
-                    <?= ucfirst($status); ?>
-                </option>
-                <?php endforeach; ?>
-            </select>
-            <?php if (!empty($errors['status'])): ?>
-            <p class="mt-1 text-xs text-rose-600"><?= e($errors['status'][0]); ?></p>
-            <?php endif; ?>
-        </div>
+        <?php
+        $statusOptions = [];
+        foreach ($statuses as $status) {
+            $statusOptions[$status] = ucfirst($status);
+        }
+        $field = [
+            'name' => 'status',
+            'label' => 'Status Open Recruitment',
+            'type' => 'select',
+            'value' => old('status', 'draft'),
+            'errors' => $errors['status'] ?? [],
+            'attributes' => ['required' => true],
+            'options' => $statusOptions,
+        ];
+        include app_path('Views/partials/_form_field.php');
+        ?>
 
         <div class="mt-6 flex items-center justify-end gap-2">
             <a href="/manage/events"

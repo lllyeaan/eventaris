@@ -6,6 +6,7 @@ namespace App\Core;
 class Session
 {
     private static array $oldInput = [];
+    private static bool $oldInputAvailable = false;
 
     public static function start(): void
     {
@@ -15,6 +16,7 @@ class Session
 
         $oldInput = $_SESSION['_old_input'] ?? [];
         self::$oldInput = is_array($oldInput) ? $oldInput : [];
+        self::$oldInputAvailable = !empty(self::$oldInput);
         unset($_SESSION['_old_input']);
     }
 
@@ -41,6 +43,8 @@ class Session
     public static function flush(): void
     {
         $_SESSION = [];
+        self::$oldInput = [];
+        self::$oldInputAvailable = false;
     }
 
     public static function regenerate(): void
@@ -72,11 +76,17 @@ class Session
     public static function flashInput(array $input): void
     {
         $_SESSION['_old_input'] = $input;
+        self::$oldInputAvailable = !empty($input);
     }
 
     public static function getOldInput(string $key, mixed $default = null): mixed
     {
         return self::$oldInput[$key] ?? $default;
+    }
+
+    public static function hasOldInput(): bool
+    {
+        return self::$oldInputAvailable;
     }
 
     public static function user(): ?array

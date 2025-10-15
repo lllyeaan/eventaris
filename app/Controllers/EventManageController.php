@@ -54,6 +54,11 @@ class EventManageController
     public function store(): void
     {
         $input = $this->sanitizeInput($_POST);
+        $ownerId = (int) Session::get('user_id');
+        if ($ownerId <= 0) {
+            Session::flash('error', 'Sesi pengguna tidak valid. Silakan login kembali.');
+            Response::redirect('/login');
+        }
 
         $validator = new Validator();
         $isValid = $validator->validate($input, [
@@ -64,6 +69,7 @@ class EventManageController
             'participant_quota' => 'required|numeric',
             'committee_quota' => 'required|numeric',
             'status' => 'required',
+            'committee_divisions' => 'max:500',
         ]);
 
         $errors = $validator->errors();
@@ -89,13 +95,15 @@ class EventManageController
         if (!empty($errors)) {
             logger('Create event validation errors: ' . json_encode($errors, JSON_THROW_ON_ERROR));
             Session::flash('errors', $errors);
-            Session::flash('error', 'Gagal menyimpan event. Silakan periksa kembali input Anda.');
+            Session::flash('error', 'Form tidak valid.');
+            Session::flash('error_messages', $this->formatErrorMessages($errors));
             Session::flashInput($input);
             Response::redirect('/manage/events/create');
         }
 
         try {
             Event::create([
+                'owner_id' => $ownerId,
                 'name' => $input['name'],
                 'description' => $input['description'],
                 'location' => $input['location'],
@@ -105,6 +113,7 @@ class EventManageController
                 'registration_start' => $this->formatDateTimeForDb($start),
                 'registration_end' => $this->formatDateTimeForDb($end),
                 'status' => $input['status'],
+                'committee_divisions' => $this->normalizeDivisions($input['committee_divisions']),
             ]);
         } catch (Exception $exception) {
             Session::flash('error', 'Terjadi kesalahan saat menyimpan event.');
@@ -165,6 +174,7 @@ class EventManageController
             'participant_quota' => 'required|numeric',
             'committee_quota' => 'required|numeric',
             'status' => 'required',
+            'committee_divisions' => 'max:500',
         ]);
 
         $errors = $validator->errors();
@@ -190,7 +200,8 @@ class EventManageController
         if (!empty($errors)) {
             logger('Update event validation errors: ' . json_encode($errors, JSON_THROW_ON_ERROR));
             Session::flash('errors', $errors);
-            Session::flash('error', 'Gagal memperbarui event. Silakan periksa kembali input Anda.');
+            Session::flash('error', 'Form tidak valid.');
+            Session::flash('error_messages', $this->formatErrorMessages($errors));
             Session::flashInput($input);
             Response::redirect('/manage/events/edit?id=' . $id);
         }
@@ -206,6 +217,7 @@ class EventManageController
                 'registration_start' => $this->formatDateTimeForDb($start),
                 'registration_end' => $this->formatDateTimeForDb($end),
                 'status' => $input['status'],
+                'committee_divisions' => $this->normalizeDivisions($input['committee_divisions']),
             ]);
         } catch (Exception $exception) {
             Session::flash('error', 'Terjadi kesalahan saat memperbarui event.');
@@ -251,6 +263,7 @@ class EventManageController
             'registration_start' => trim((string) ($input['registration_start'] ?? '')),
             'registration_end' => trim((string) ($input['registration_end'] ?? '')),
             'status' => trim((string) ($input['status'] ?? 'draft')),
+            'committee_divisions' => trim((string) ($input['committee_divisions'] ?? '')),
         ];
     }
 
@@ -297,5 +310,40 @@ class EventManageController
         }
 
         return (int) $value >= 1;
+    }
+
+    private function formatErrorMessages(array $errors): array
+    {
+        $messages = [];
+        foreach ($errors as $field => $fieldErrors) {
+            foreach ($fieldErrors as $message) {
+                $messages[] = $message;
+            }
+        }
+
+        return $messages;
+    }
+
+    private function normalizeDivisions(string $value): ?string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return null;
+        }
+
+        $parts = preg_split('/[\r\n,]+/', $value) ?: [];
+        $clean = [];
+        foreach ($parts as $part) {
+            $trimmed = trim($part);
+            if ($trimmed !== '') {
+                $clean[] = $trimmed;
+            }
+        }
+
+        if (empty($clean)) {
+            return null;
+        }
+
+        return implode(PHP_EOL, array_unique($clean));
     }
 }

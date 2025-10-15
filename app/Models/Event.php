@@ -51,6 +51,7 @@ class Event
         $pdo = Database::connection();
         $statement = $pdo->prepare(
             'INSERT INTO events (
+                owner_id,
                 name,
                 description,
                 location,
@@ -60,9 +61,11 @@ class Event
                 registration_start,
                 registration_end,
                 status,
+                committee_divisions,
                 created_at,
                 updated_at
             ) VALUES (
+                :owner_id,
                 :name,
                 :description,
                 :location,
@@ -72,11 +75,13 @@ class Event
                 :registration_start,
                 :registration_end,
                 :status,
+                :committee_divisions,
                 NOW(),
                 NOW()
             )'
         );
 
+        $statement->bindValue(':owner_id', $data['owner_id'], PDO::PARAM_INT);
         $statement->bindValue(':name', $data['name']);
         $statement->bindValue(':description', $data['description']);
         $statement->bindValue(':location', $data['location']);
@@ -86,6 +91,7 @@ class Event
         self::bindNullable($statement, ':registration_start', $data['registration_start']);
         self::bindNullable($statement, ':registration_end', $data['registration_end']);
         $statement->bindValue(':status', $data['status']);
+        self::bindNullable($statement, ':committee_divisions', $data['committee_divisions'] ?? null);
         $statement->execute();
 
         return (int) $pdo->lastInsertId();
@@ -105,6 +111,7 @@ class Event
                 registration_start = :registration_start,
                 registration_end = :registration_end,
                 status = :status,
+                committee_divisions = :committee_divisions,
                 updated_at = NOW()
              WHERE id = :id'
         );
@@ -118,6 +125,7 @@ class Event
         self::bindNullable($statement, ':registration_start', $data['registration_start']);
         self::bindNullable($statement, ':registration_end', $data['registration_end']);
         $statement->bindValue(':status', $data['status']);
+        self::bindNullable($statement, ':committee_divisions', $data['committee_divisions'] ?? null);
         $statement->bindValue(':id', $id, PDO::PARAM_INT);
 
         return $statement->execute();

@@ -42,6 +42,24 @@ $committeeRemaining = max(0, (int) ($event['committee_quota'] ?? 0) - (int) ($co
                     </dd>
                 </div>
             </dl>
+            <?php if (!empty($event['committee_divisions'])): ?>
+                <?php
+                $divisionItems = array_filter(array_map(
+                    'trim',
+                    preg_split('/\r\n|\r|\n/', (string) $event['committee_divisions']) ?: []
+                ));
+                ?>
+                <?php if (!empty($divisionItems)): ?>
+                    <div class="mt-4 rounded border border-slate-200 p-4">
+                        <h2 class="text-sm font-semibold uppercase text-slate-500">Divisi Panitia</h2>
+                        <ul class="mt-2 list-disc pl-5 text-sm text-slate-600">
+                            <?php foreach ($divisionItems as $division): ?>
+                                <li><?= e($division); ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                <?php endif; ?>
+            <?php endif; ?>
         </div>
 
         <div class="grid gap-6 md:grid-cols-2">

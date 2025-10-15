@@ -1,6 +1,7 @@
 <?php
 $success = flash('success');
 $error = flash('error');
+$errorMessages = flash('error_messages') ?? [];
 $info = flash('info');
 ?>
 <?php if ($success): ?>
@@ -9,9 +10,18 @@ $info = flash('info');
     </div>
 <?php endif; ?>
 
-<?php if ($error): ?>
+<?php if ($error || !empty($errorMessages)): ?>
     <div class="mb-4 rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-        <?= e((string) $error); ?>
+        <?php if ($error): ?>
+            <p class="font-medium"><?= e((string) $error); ?></p>
+        <?php endif; ?>
+        <?php if (!empty($errorMessages)): ?>
+            <ul class="mt-2 list-disc pl-5">
+                <?php foreach ((array) $errorMessages as $message): ?>
+                    <li><?= e((string) $message); ?></li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
     </div>
 <?php endif; ?>
 

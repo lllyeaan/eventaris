@@ -27,6 +27,12 @@ class EventApplicationController
             'participant_notes' => trim((string) ($_POST['participant_notes'] ?? '')),
         ];
 
+        $userId = Session::get('user_id');
+        if ($userId !== null && (int) ($event['owner_id'] ?? 0) === (int) $userId) {
+            Session::flash('error', 'Anda tidak dapat mendaftar sebagai peserta pada event milik sendiri.');
+            Response::redirect('/events/show?id=' . $eventId);
+        }
+
         if (!Event::isRecruitmentOpen($event)) {
             Session::flash('error', 'Pendaftaran peserta untuk event ini sudah ditutup.');
             Session::flashInput($input);
@@ -92,6 +98,12 @@ class EventApplicationController
             'committee_secondary_division' => trim((string) ($_POST['committee_secondary_division'] ?? '')),
             'committee_motivation' => trim((string) ($_POST['committee_motivation'] ?? '')),
         ];
+
+        $userId = Session::get('user_id');
+        if ($userId !== null && (int) ($event['owner_id'] ?? 0) === (int) $userId) {
+            Session::flash('error', 'Anda tidak dapat mendaftar sebagai panitia pada event milik sendiri.');
+            Response::redirect('/events/show?id=' . $eventId);
+        }
 
         if (!Event::isRecruitmentOpen($event)) {
             Session::flash('error', 'Pendaftaran panitia untuk event ini sudah ditutup.');
