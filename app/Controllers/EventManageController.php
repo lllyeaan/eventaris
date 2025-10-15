@@ -95,7 +95,6 @@ class EventManageController
         if (!empty($errors)) {
             logger('Create event validation errors: ' . json_encode($errors, JSON_THROW_ON_ERROR));
             Session::flash('errors', $errors);
-            Session::flash('error', 'Form tidak valid.');
             Session::flash('error_messages', $this->formatErrorMessages($errors));
             Session::flashInput($input);
             Response::redirect('/manage/events/create');
@@ -200,7 +199,6 @@ class EventManageController
         if (!empty($errors)) {
             logger('Update event validation errors: ' . json_encode($errors, JSON_THROW_ON_ERROR));
             Session::flash('errors', $errors);
-            Session::flash('error', 'Form tidak valid.');
             Session::flash('error_messages', $this->formatErrorMessages($errors));
             Session::flashInput($input);
             Response::redirect('/manage/events/edit?id=' . $id);
@@ -315,9 +313,22 @@ class EventManageController
     private function formatErrorMessages(array $errors): array
     {
         $messages = [];
+        $labels = [
+            'name' => 'Nama Event',
+            'description' => 'Deskripsi / Rules',
+            'location' => 'Lokasi',
+            'event_date' => 'Tanggal Event',
+            'participant_quota' => 'Kuota Peserta',
+            'committee_quota' => 'Kuota Panitia',
+            'registration_start' => 'Mulai Pendaftaran',
+            'registration_end' => 'Akhir Pendaftaran',
+            'status' => 'Status Open Recruitment',
+            'committee_divisions' => 'Daftar Divisi Panitia',
+        ];
         foreach ($errors as $field => $fieldErrors) {
             foreach ($fieldErrors as $message) {
-                $messages[] = $message;
+                $label = $labels[$field] ?? ucfirst(str_replace('_', ' ', $field));
+                $messages[] = $label . ': ' . $message;
             }
         }
 
@@ -344,6 +355,8 @@ class EventManageController
             return null;
         }
 
-        return implode(PHP_EOL, array_unique($clean));
+        $clean = array_values(array_unique($clean));
+
+        return implode(PHP_EOL, $clean);
     }
 }

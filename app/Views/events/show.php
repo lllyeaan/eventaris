@@ -7,6 +7,13 @@ $participantErrors = flash('participant_errors') ?? [];
 $committeeErrors = flash('committee_errors') ?? [];
 $participantRemaining = max(0, (int) ($event['participant_quota'] ?? 0) - (int) ($participantSummary['approved'] ?? 0));
 $committeeRemaining = max(0, (int) ($event['committee_quota'] ?? 0) - (int) ($committeeSummary['approved'] ?? 0));
+$committeeDivisions = [];
+if (is_array($event) && !empty($event['committee_divisions'])) {
+    $committeeDivisions = array_values(array_filter(array_map(
+        'trim',
+        preg_split('/\r\n|\r|\n/', (string) $event['committee_divisions']) ?: []
+    )));
+}
 ?>
 <?php if ($event): ?>
     <section class="space-y-8">
@@ -42,23 +49,15 @@ $committeeRemaining = max(0, (int) ($event['committee_quota'] ?? 0) - (int) ($co
                     </dd>
                 </div>
             </dl>
-            <?php if (!empty($event['committee_divisions'])): ?>
-                <?php
-                $divisionItems = array_filter(array_map(
-                    'trim',
-                    preg_split('/\r\n|\r|\n/', (string) $event['committee_divisions']) ?: []
-                ));
-                ?>
-                <?php if (!empty($divisionItems)): ?>
-                    <div class="mt-4 rounded border border-slate-200 p-4">
-                        <h2 class="text-sm font-semibold uppercase text-slate-500">Divisi Panitia</h2>
-                        <ul class="mt-2 list-disc pl-5 text-sm text-slate-600">
-                            <?php foreach ($divisionItems as $division): ?>
-                                <li><?= e($division); ?></li>
-                            <?php endforeach; ?>
-                        </ul>
-                    </div>
-                <?php endif; ?>
+            <?php if (!empty($committeeDivisions)): ?>
+                <div class="mt-4 rounded border border-slate-200 p-4">
+                    <h2 class="text-sm font-semibold uppercase text-slate-500">Divisi Panitia</h2>
+                    <ul class="mt-2 list-disc pl-5 text-sm text-slate-600">
+                        <?php foreach ($committeeDivisions as $division): ?>
+                            <li><?= e($division); ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
             <?php endif; ?>
         </div>
 
@@ -143,6 +142,14 @@ $committeeRemaining = max(0, (int) ($event['committee_quota'] ?? 0) - (int) ($co
 
             <div class="rounded-xl bg-white p-6 shadow-sm">
                 <h2 class="text-lg font-semibold text-slate-800">Pendaftaran Panitia</h2>
+                <?php if (!empty($committeeDivisions)): ?>
+                    <p class="mt-2 text-xs text-slate-500">
+                        Divisi tersedia:
+                        <?php foreach ($committeeDivisions as $division): ?>
+                            <span class="mr-1 inline-block rounded bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600"><?= e($division); ?></span>
+                        <?php endforeach; ?>
+                    </p>
+                <?php endif; ?>
                 <div class="mt-3 flex items-center gap-4 text-xs text-slate-500">
                     <span>Kuota: <?= e((string) ($event['committee_quota'] ?? 0)); ?></span>
                     <span>Pending: <?= e((string) ($committeeSummary['pending'] ?? 0)); ?></span>
