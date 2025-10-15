@@ -165,9 +165,9 @@ if (!function_exists('old')) {
 }
 
 if (!function_exists('flash')) {
-    function flash(string $key, ?string $message = null): ?string
+    function flash(string $key, mixed $message = null): mixed
     {
-        if ($message === null) {
+        if (func_num_args() === 1) {
             return Session::getFlash($key);
         }
 

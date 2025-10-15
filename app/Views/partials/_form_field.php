@@ -7,16 +7,23 @@ $errors = $field['errors'] ?? [];
 $attributes = $field['attributes'] ?? [];
 $placeholder = $field['placeholder'] ?? '';
 $help = $field['help'] ?? null;
+$isRequired = false;
 
 $attrString = '';
 foreach ($attributes as $attrKey => $attrValue) {
     if (is_bool($attrValue)) {
         if ($attrValue) {
             $attrString .= ' ' . $attrKey;
+            if ($attrKey === 'required') {
+                $isRequired = true;
+            }
         }
         continue;
     }
     $attrString .= sprintf(' %s="%s"', $attrKey, htmlspecialchars((string) $attrValue, ENT_QUOTES, 'UTF-8'));
+    if ($attrKey === 'required') {
+        $isRequired = true;
+    }
 }
 
 $inputClasses = 'block w-full rounded border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none focus:ring';
@@ -25,7 +32,12 @@ if (!empty($errors)) {
 }
 ?>
 <div class="mb-4">
-    <label for="<?= e($name); ?>" class="mb-1 block text-sm font-medium text-slate-600"><?= e($label); ?></label>
+    <label for="<?= e($name); ?>" class="mb-1 block text-sm font-medium text-slate-600">
+        <?= e($label); ?>
+        <?php if ($isRequired): ?>
+            <span class="text-rose-500">*</span>
+        <?php endif; ?>
+    </label>
     <?php if ($type === 'textarea'): ?>
         <textarea
             id="<?= e($name); ?>"
