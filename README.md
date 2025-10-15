@@ -4,9 +4,10 @@ Eventory adalah starter kit manajemen event kampus/komunitas berbasis PHP murni 
 
 ## Fitur Utama
 - Autentikasi: register, login, logout dengan `password_hash`/`password_verify`.
-- Dashboard ringkasan event, total pending peserta/panitia, dan sisa slot.
-- CRUD penuh untuk entitas `events`, `participant_regs`, `committee_apps`.
+- Dashboard pribadi: hanya menampilkan statistik event milik pengguna.
+- CRUD penuh untuk entitas `events`, `participant_regs`, `committee_apps` (terbatas pada event milik pengguna).
 - Form publik pendaftaran peserta & panitia dengan validasi kuota dan periode.
+- Profil pengguna: ubah nama tampilan, ganti password (email tetap).
 - Routing kustom, helper session & validator, view PHP dengan Tailwind CDN.
 - Migrasi SQL manual melalui `php bin/migrate.php`.
 
@@ -26,6 +27,7 @@ Eventory adalah starter kit manajemen event kampus/komunitas berbasis PHP murni 
    ```bash
    php bin/migrate.php
    ```
+   > Upgrade dari versi sebelumnya? Pastikan tabel `events` memiliki kolom `owner_id` (FK ke `users.id`) dan `committee_divisions`. Cara termudah adalah membuat ulang database atau menambahkan kolom tersebut secara manual sebelum menjalankan aplikasi.
 5. Jalankan server pengembangan PHP:
    ```bash
    php -S localhost:8000 -t public
@@ -71,9 +73,12 @@ Pastikan menjalankan langkah berikut setelah setup:
    2. Masuk ke `Participants` -> cek data masuk, ubah status, dan hapus data.
 3. **CRUD Committee Applications**
    1. Dari halaman event publik, kirim form panitia.
-   2. Di menu `Committees`, perbarui status aplikasi dan hapus data untuk menguji alur DELETE.
+   2. Di menu `Committees`, perbarui status aplikasi dan hapus data untuk menguji alur DELETE (hanya event milik Anda).
+4. **Profil Pengguna**
+   1. Buka menu `Profile`.
+   2. Ubah nama dan coba ganti password dengan kombinasi valid/tidak valid untuk memastikan validasi berjalan.
 
-Tambahan: pastikan dashboard menampilkan total event, pending peserta/panitia, serta sisa slot setelah data uji dibuat.
+Tambahan: pastikan dashboard menampilkan total event, pending peserta/panitia, serta sisa slot setelah data uji dibuat (berdasarkan event milik pengguna aktif).
 
 ## Menjalankan Server
 Gunakan server bawaan PHP:
@@ -86,7 +91,9 @@ Jika ingin mengaktifkan mode produksi, set `APP_DEBUG=false` pada `.env`. Log ke
 ## Keamanan & Catatan
 - Seluruh query menggunakan prepared statement PDO.
 - Data output di-escape dengan `htmlspecialchars` melalui helper `e()`.
-- Middleware `AuthMiddleware` melindungi `/dashboard` dan seluruh rute `/manage/*`.
+- Middleware `AuthMiddleware` melindungi `/dashboard`, `/profile`, dan seluruh rute `/manage/*`.
+- Akses data manajemen dibatasi per pengguna: event, peserta, dan panitia milik pengguna lain akan tersembunyi.
 - Tidak ada CSRF token bawaan; gunakan dengan bijak untuk demo/skripsi.
 
 Selamat membangun event dengan Eventory!
+

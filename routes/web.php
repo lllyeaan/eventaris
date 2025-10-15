@@ -8,6 +8,7 @@ use App\Controllers\EventApplicationController;
 use App\Controllers\EventController;
 use App\Controllers\EventManageController;
 use App\Controllers\ParticipantManageController;
+use App\Controllers\ProfileController;
 use App\Middleware\AuthMiddleware;
 
 $router->get('/', [EventController::class, 'landing']);
@@ -23,6 +24,8 @@ $router->post('/register', [AuthController::class, 'register']);
 $router->post('/logout', [AuthController::class, 'logout'], [AuthMiddleware::class]);
 
 $router->get('/dashboard', [DashboardController::class, 'index'], [AuthMiddleware::class]);
+$router->get('/profile', [ProfileController::class, 'edit'], [AuthMiddleware::class]);
+$router->post('/profile', [ProfileController::class, 'update'], [AuthMiddleware::class]);
 
 $router->get('/manage/events', [EventManageController::class, 'index'], [AuthMiddleware::class]);
 $router->get('/manage/events/create', [EventManageController::class, 'create'], [AuthMiddleware::class]);

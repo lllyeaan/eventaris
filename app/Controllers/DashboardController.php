@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\Session;
 use App\Models\Committee;
 use App\Models\Event;
 use App\Models\Participant;
@@ -11,7 +12,9 @@ class DashboardController
 {
     public function index(): void
     {
-        $eventsSummary = Event::quotaSummary();
+        $ownerId = (int) Session::get('user_id');
+
+        $eventsSummary = Event::quotaSummary($ownerId);
 
         foreach ($eventsSummary as &$event) {
             $event['participants_remaining'] = max(
@@ -28,9 +31,9 @@ class DashboardController
         view('dashboard/index', [
             'title' => 'Dashboard',
             'stats' => [
-                'events' => Event::count(),
-                'participants_pending' => Participant::countPending(),
-                'committees_pending' => Committee::countPending(),
+                'events' => Event::count($ownerId),
+                'participants_pending' => Participant::countPending($ownerId),
+                'committees_pending' => Committee::countPending($ownerId),
             ],
             'eventsSummary' => $eventsSummary,
         ]);

@@ -13,8 +13,15 @@ class CommitteeManageController
 {
     public function index(): void
     {
+        $ownerId = (int) Session::get('user_id');
+
         $eventId = isset($_GET['event_id']) ? (int) $_GET['event_id'] : null;
-        if ($eventId !== null && $eventId <= 0) {
+        if ($eventId !== null && $eventId > 0) {
+            $ownedEvent = Event::findForOwner($eventId, $ownerId);
+            if ($ownedEvent === null) {
+                $eventId = null;
+            }
+        } elseif ($eventId !== null && $eventId <= 0) {
             $eventId = null;
         }
 
@@ -23,8 +30,8 @@ class CommitteeManageController
             $status = null;
         }
 
-        $committees = Committee::list($eventId, $status, 50);
-        $events = Event::all();
+        $committees = Committee::list($eventId, $status, 50, $ownerId);
+        $events = Event::ownedBy($ownerId);
         $statuses = Committee::statuses();
 
         view('committees/manage/index', [
@@ -45,7 +52,8 @@ class CommitteeManageController
             Response::redirect('/manage/committees');
         }
 
-        $committee = Committee::find($id);
+        $ownerId = (int) Session::get('user_id');
+        $committee = Committee::findForOwner($id, $ownerId);
         if ($committee === null) {
             Session::flash('error', 'Panitia tidak ditemukan.');
             Response::redirect('/manage/committees');
@@ -67,6 +75,13 @@ class CommitteeManageController
 
         if ($id <= 0) {
             Session::flash('error', 'ID panitia tidak valid.');
+            Response::redirect('/manage/committees');
+        }
+
+        $ownerId = (int) Session::get('user_id');
+        $committee = Committee::findForOwner($id, $ownerId);
+        if ($committee === null) {
+            Session::flash('error', 'Panitia tidak ditemukan atau Anda tidak memiliki akses.');
             Response::redirect('/manage/committees');
         }
 
@@ -93,6 +108,13 @@ class CommitteeManageController
         $id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
         if ($id <= 0) {
             Session::flash('error', 'ID panitia tidak valid.');
+            Response::redirect('/manage/committees');
+        }
+
+        $ownerId = (int) Session::get('user_id');
+        $committee = Committee::findForOwner($id, $ownerId);
+        if ($committee === null) {
+            Session::flash('error', 'Panitia tidak ditemukan atau Anda tidak memiliki akses.');
             Response::redirect('/manage/committees');
         }
 

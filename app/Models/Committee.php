@@ -53,7 +53,7 @@ class Committee
         return (int) $pdo->lastInsertId();
     }
 
-    public static function list(?int $eventId = null, ?string $status = null, int $limit = 20): array
+    public static function list(?int $eventId = null, ?string $status = null, int $limit = 20, ?int $ownerId = null): array
     {
         $pdo = Database::connection();
 
@@ -67,6 +67,10 @@ class Committee
             $sql .= ' AND ca.event_id = :event_id';
         }
 
+        if ($ownerId !== null) {
+            $sql .= ' AND e.owner_id = :owner_id';
+        }
+
         if ($status !== null && $status !== '') {
             $sql .= ' AND ca.status_code = :status_code';
         }
@@ -77,6 +81,10 @@ class Committee
 
         if ($eventId !== null) {
             $statement->bindValue(':event_id', $eventId, PDO::PARAM_INT);
+        }
+
+        if ($ownerId !== null) {
+            $statement->bindValue(':owner_id', $ownerId, PDO::PARAM_INT);
         }
 
         if ($status !== null && $status !== '') {
@@ -109,6 +117,27 @@ class Committee
         return $committee ?: null;
     }
 
+    public static function findForOwner(int $id, int $ownerId): ?array
+    {
+        $pdo = Database::connection();
+        $statement = $pdo->prepare(
+            'SELECT ca.*, e.name AS event_name, cs.label AS status_label, e.owner_id
+             FROM committee_apps ca
+             INNER JOIN events e ON e.id = ca.event_id
+             INNER JOIN committee_statuses cs ON cs.code = ca.status_code
+             WHERE ca.id = :id AND e.owner_id = :owner_id
+             LIMIT 1'
+        );
+
+        $statement->bindValue(':id', $id, PDO::PARAM_INT);
+        $statement->bindValue(':owner_id', $ownerId, PDO::PARAM_INT);
+        $statement->execute();
+
+        $committee = $statement->fetch(PDO::FETCH_ASSOC);
+
+        return $committee ?: null;
+    }
+
     public static function updateStatus(int $id, string $statusCode): bool
     {
         $pdo = Database::connection();
@@ -133,38 +162,67 @@ class Committee
         return $statement->execute();
     }
 
-    public static function countPending(): int
+    public static function countPending(?int $ownerId = null): int
     {
         $pdo = Database::connection();
-        $statement = $pdo->query(
-            'SELECT COUNT(*) AS total FROM committee_apps WHERE status_code = \'pending\''
-        );
-        $result = $statement->fetch(PDO::FETCH_ASSOC);
+        if ($ownerId === null) {
+            $statement = $pdo->query(
+                'SELECT COUNT(*) AS total FROM committee_apps WHERE status_code = \'pending\''
+            );
+            $result = $statement->fetch(PDO::FETCH_ASSOC);
+        } else {
+            $statement = $pdo->prepare(
+                'SELECT COUNT(*) AS total
+                 FROM committee_apps ca
+                 INNER JOIN events e ON e.id = ca.event_id
+                 WHERE ca.status_code = \'pending\' AND e.owner_id = :owner_id'
+            );
+            $statement->bindValue(':owner_id', $ownerId, PDO::PARAM_INT);
+            $statement->execute();
+            $result = $statement->fetch(PDO::FETCH_ASSOC);
+        }
 
         return (int) ($result['total'] ?? 0);
     }
 
-    public static function summaryByEvent(): array
+    public static function summaryByEvent(?int $ownerId = null): array
     {
         $pdo = Database::connection();
-        $statement = $pdo->query(
-            'SELECT
-                event_id,
-                COUNT(*) AS total,
-                SUM(CASE WHEN status_code = \'approved\' THEN 1 ELSE 0 END) AS approved,
-                SUM(CASE WHEN status_code = \'pending\' THEN 1 ELSE 0 END) AS pending
-             FROM committee_apps
-             GROUP BY event_id'
-        );
+        if ($ownerId === null) {
+            $statement = $pdo->query(
+                'SELECT
+                    event_id,
+                    COUNT(*) AS total,
+                    SUM(CASE WHEN status_code = \'approved\' THEN 1 ELSE 0 END) AS approved,
+                    SUM(CASE WHEN status_code = \'pending\' THEN 1 ELSE 0 END) AS pending
+                 FROM committee_apps
+                 GROUP BY event_id'
+            );
+            $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+        } else {
+            $statement = $pdo->prepare(
+                'SELECT
+                    ca.event_id,
+                    COUNT(*) AS total,
+                    SUM(CASE WHEN ca.status_code = \'approved\' THEN 1 ELSE 0 END) AS approved,
+                    SUM(CASE WHEN ca.status_code = \'pending\' THEN 1 ELSE 0 END) AS pending
+                 FROM committee_apps ca
+                 INNER JOIN events e ON e.id = ca.event_id
+                 WHERE e.owner_id = :owner_id
+                 GROUP BY ca.event_id'
+            );
+            $statement->bindValue(':owner_id', $ownerId, PDO::PARAM_INT);
+            $statement->execute();
+            $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+        }
 
-        $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
         $summary = [];
 
         foreach ($rows as $row) {
             $summary[(int) $row['event_id']] = [
-                'total' => (int) $row['total'],
-                'approved' => (int) $row['approved'],
-                'pending' => (int) $row['pending'],
+                'total' => (int) ($row['total'] ?? 0),
+                'approved' => (int) ($row['approved'] ?? 0),
+                'pending' => (int) ($row['pending'] ?? 0),
             ];
         }
 
@@ -203,3 +261,4 @@ class Committee
         return $statement->fetchAll(PDO::FETCH_ASSOC);
     }
 }
+

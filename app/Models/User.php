@@ -56,4 +56,25 @@ class User
 
         return (int) ($result['total'] ?? 0);
     }
+
+    public static function updateProfile(int $id, array $data): bool
+    {
+        $pdo = Database::connection();
+
+        if (isset($data['password']) && $data['password'] !== null) {
+            $statement = $pdo->prepare(
+                'UPDATE users SET name = :name, password = :password, updated_at = NOW() WHERE id = :id'
+            );
+            $statement->bindValue(':password', $data['password']);
+        } else {
+            $statement = $pdo->prepare(
+                'UPDATE users SET name = :name, updated_at = NOW() WHERE id = :id'
+            );
+        }
+
+        $statement->bindValue(':name', $data['name']);
+        $statement->bindValue(':id', $id, PDO::PARAM_INT);
+
+        return $statement->execute();
+    }
 }

@@ -13,8 +13,15 @@ class ParticipantManageController
 {
     public function index(): void
     {
+        $ownerId = (int) Session::get('user_id');
+
         $eventId = isset($_GET['event_id']) ? (int) $_GET['event_id'] : null;
-        if ($eventId !== null && $eventId <= 0) {
+        if ($eventId !== null && $eventId > 0) {
+            $ownedEvent = Event::findForOwner($eventId, $ownerId);
+            if ($ownedEvent === null) {
+                $eventId = null;
+            }
+        } elseif ($eventId !== null && $eventId <= 0) {
             $eventId = null;
         }
 
@@ -23,8 +30,8 @@ class ParticipantManageController
             $status = null;
         }
 
-        $participants = Participant::list($eventId, $status, 50);
-        $events = Event::all();
+        $participants = Participant::list($eventId, $status, 50, $ownerId);
+        $events = Event::ownedBy($ownerId);
         $statuses = Participant::statuses();
 
         view('participants/manage/index', [
@@ -45,7 +52,8 @@ class ParticipantManageController
             Response::redirect('/manage/participants');
         }
 
-        $participant = Participant::find($id);
+        $ownerId = (int) Session::get('user_id');
+        $participant = Participant::findForOwner($id, $ownerId);
         if ($participant === null) {
             Session::flash('error', 'Peserta tidak ditemukan.');
             Response::redirect('/manage/participants');
@@ -67,6 +75,13 @@ class ParticipantManageController
 
         if ($id <= 0) {
             Session::flash('error', 'ID peserta tidak valid.');
+            Response::redirect('/manage/participants');
+        }
+
+        $ownerId = (int) Session::get('user_id');
+        $participant = Participant::findForOwner($id, $ownerId);
+        if ($participant === null) {
+            Session::flash('error', 'Peserta tidak ditemukan atau Anda tidak memiliki akses.');
             Response::redirect('/manage/participants');
         }
 
@@ -93,6 +108,13 @@ class ParticipantManageController
         $id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
         if ($id <= 0) {
             Session::flash('error', 'ID peserta tidak valid.');
+            Response::redirect('/manage/participants');
+        }
+
+        $ownerId = (int) Session::get('user_id');
+        $participant = Participant::findForOwner($id, $ownerId);
+        if ($participant === null) {
+            Session::flash('error', 'Peserta tidak ditemukan atau Anda tidak memiliki akses.');
             Response::redirect('/manage/participants');
         }
 

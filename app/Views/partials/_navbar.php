@@ -15,6 +15,7 @@ $userName = Session::get('user_name', 'Panitia');
                 <a href="/manage/events" class="<?= str_starts_with(trim(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '', '/'), 'manage/events') ? 'text-sky-600' : 'text-slate-600 hover:text-sky-600'; ?>">Events Manage</a>
                 <a href="/manage/participants" class="<?= str_starts_with(trim(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '', '/'), 'manage/participants') ? 'text-sky-600' : 'text-slate-600 hover:text-sky-600'; ?>">Participants</a>
                 <a href="/manage/committees" class="<?= str_starts_with(trim(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '', '/'), 'manage/committees') ? 'text-sky-600' : 'text-slate-600 hover:text-sky-600'; ?>">Committees</a>
+                <a href="/profile" class="<?= route_is('profile') ? 'text-sky-600' : 'text-slate-600 hover:text-sky-600'; ?>">Profile</a>
             <?php endif; ?>
         </nav>
         <div class="flex items-center gap-3">

@@ -18,9 +18,10 @@ class EventManageController
 
     public function index(): void
     {
-        $events = Event::all();
-        $participantSummary = Participant::summaryByEvent();
-        $committeeSummary = Committee::summaryByEvent();
+        $ownerId = (int) Session::get('user_id');
+        $events = Event::ownedBy($ownerId);
+        $participantSummary = Participant::summaryByEvent($ownerId);
+        $committeeSummary = Committee::summaryByEvent($ownerId);
 
         foreach ($events as &$event) {
             $pid = (int) $event['id'];
@@ -95,6 +96,7 @@ class EventManageController
         if (!empty($errors)) {
             logger('Create event validation errors: ' . json_encode($errors, JSON_THROW_ON_ERROR));
             Session::flash('errors', $errors);
+            Session::flash('error', 'Periksa kembali input event Anda.');
             Session::flash('error_messages', $this->formatErrorMessages($errors));
             Session::flashInput($input);
             Response::redirect('/manage/events/create');
@@ -132,7 +134,8 @@ class EventManageController
             Response::redirect('/manage/events');
         }
 
-        $event = Event::find($id);
+        $ownerId = (int) Session::get('user_id');
+        $event = Event::findForOwner($id, $ownerId);
         if ($event === null) {
             Session::flash('error', 'Event tidak ditemukan.');
             Response::redirect('/manage/events');
@@ -156,7 +159,8 @@ class EventManageController
             Response::redirect('/manage/events');
         }
 
-        $event = Event::find($id);
+        $ownerId = (int) Session::get('user_id');
+        $event = Event::findForOwner($id, $ownerId);
         if ($event === null) {
             Session::flash('error', 'Event tidak ditemukan.');
             Response::redirect('/manage/events');
@@ -199,6 +203,7 @@ class EventManageController
         if (!empty($errors)) {
             logger('Update event validation errors: ' . json_encode($errors, JSON_THROW_ON_ERROR));
             Session::flash('errors', $errors);
+            Session::flash('error', 'Periksa kembali input event Anda.');
             Session::flash('error_messages', $this->formatErrorMessages($errors));
             Session::flashInput($input);
             Response::redirect('/manage/events/edit?id=' . $id);
@@ -233,6 +238,13 @@ class EventManageController
         $id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
         if ($id <= 0) {
             Session::flash('error', 'ID event tidak valid.');
+            Response::redirect('/manage/events');
+        }
+
+        $ownerId = (int) Session::get('user_id');
+        $event = Event::findForOwner($id, $ownerId);
+        if ($event === null) {
+            Session::flash('error', 'Event tidak ditemukan atau Anda tidak memiliki akses.');
             Response::redirect('/manage/events');
         }
 

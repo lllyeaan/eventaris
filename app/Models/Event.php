@@ -20,6 +20,21 @@ class Event
         return $statement->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public static function ownedBy(int $ownerId): array
+    {
+        $pdo = Database::connection();
+        $statement = $pdo->prepare(
+            'SELECT *
+             FROM events
+             WHERE owner_id = :owner_id
+             ORDER BY registration_start DESC, created_at DESC'
+        );
+        $statement->bindValue(':owner_id', $ownerId, PDO::PARAM_INT);
+        $statement->execute();
+
+        return $statement->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     public static function paginate(int $limit = 20): array
     {
         $pdo = Database::connection();
@@ -39,6 +54,21 @@ class Event
             'SELECT * FROM events WHERE id = :id LIMIT 1'
         );
         $statement->bindValue(':id', $id, PDO::PARAM_INT);
+        $statement->execute();
+
+        $event = $statement->fetch(PDO::FETCH_ASSOC);
+
+        return $event ?: null;
+    }
+
+    public static function findForOwner(int $id, int $ownerId): ?array
+    {
+        $pdo = Database::connection();
+        $statement = $pdo->prepare(
+            'SELECT * FROM events WHERE id = :id AND owner_id = :owner_id LIMIT 1'
+        );
+        $statement->bindValue(':id', $id, PDO::PARAM_INT);
+        $statement->bindValue(':owner_id', $ownerId, PDO::PARAM_INT);
         $statement->execute();
 
         $event = $statement->fetch(PDO::FETCH_ASSOC);
@@ -140,20 +170,27 @@ class Event
         return $statement->execute();
     }
 
-    public static function count(): int
+    public static function count(?int $ownerId = null): int
     {
         $pdo = Database::connection();
-        $statement = $pdo->query('SELECT COUNT(*) AS total FROM events');
-        $result = $statement->fetch(PDO::FETCH_ASSOC);
+        if ($ownerId === null) {
+            $statement = $pdo->query('SELECT COUNT(*) AS total FROM events');
+            $result = $statement->fetch(PDO::FETCH_ASSOC);
+        } else {
+            $statement = $pdo->prepare('SELECT COUNT(*) AS total FROM events WHERE owner_id = :owner_id');
+            $statement->bindValue(':owner_id', $ownerId, PDO::PARAM_INT);
+            $statement->execute();
+            $result = $statement->fetch(PDO::FETCH_ASSOC);
+        }
 
         return (int) ($result['total'] ?? 0);
     }
 
-    public static function quotaSummary(): array
+    public static function quotaSummary(?int $ownerId = null): array
     {
         $pdo = Database::connection();
-        $statement = $pdo->query(
-            'SELECT
+        if ($ownerId === null) {
+            $sql = 'SELECT
                 e.id,
                 e.name,
                 e.participant_quota,
@@ -167,8 +204,29 @@ class Event
                 (SELECT COUNT(*) FROM committee_apps ca WHERE ca.event_id = e.id AND ca.status_code = \'approved\') AS committees_approved,
                 (SELECT COUNT(*) FROM committee_apps ca WHERE ca.event_id = e.id AND ca.status_code = \'pending\') AS committees_pending
             FROM events e
-            ORDER BY e.created_at DESC'
-        );
+            ORDER BY e.created_at DESC';
+            $statement = $pdo->query($sql);
+        } else {
+            $sql = 'SELECT
+                e.id,
+                e.name,
+                e.participant_quota,
+                e.committee_quota,
+                e.status,
+                e.registration_start,
+                e.registration_end,
+                e.event_date,
+                (SELECT COUNT(*) FROM participant_regs pr WHERE pr.event_id = e.id AND pr.status_code = \'approved\') AS participants_approved,
+                (SELECT COUNT(*) FROM participant_regs pr WHERE pr.event_id = e.id AND pr.status_code = \'pending\') AS participants_pending,
+                (SELECT COUNT(*) FROM committee_apps ca WHERE ca.event_id = e.id AND ca.status_code = \'approved\') AS committees_approved,
+                (SELECT COUNT(*) FROM committee_apps ca WHERE ca.event_id = e.id AND ca.status_code = \'pending\') AS committees_pending
+            FROM events e
+            WHERE e.owner_id = :owner_id
+            ORDER BY e.created_at DESC';
+            $statement = $pdo->prepare($sql);
+            $statement->bindValue(':owner_id', $ownerId, PDO::PARAM_INT);
+            $statement->execute();
+        }
 
         return $statement->fetchAll(PDO::FETCH_ASSOC);
     }
