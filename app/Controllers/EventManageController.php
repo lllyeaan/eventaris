@@ -1,0 +1,299 @@
+<?php
+declare(strict_types=1);
+
+namespace App\Controllers;
+
+use App\Core\Response;
+use App\Core\Session;
+use App\Core\Validator;
+use App\Models\Committee;
+use App\Models\Event;
+use App\Models\Participant;
+use DateTimeImmutable;
+use Exception;
+
+class EventManageController
+{
+    private const STATUS_OPTIONS = ['draft', 'open', 'closed'];
+
+    public function index(): void
+    {
+        $events = Event::all();
+        $participantSummary = Participant::summaryByEvent();
+        $committeeSummary = Committee::summaryByEvent();
+
+        foreach ($events as &$event) {
+            $pid = (int) $event['id'];
+            $participantData = $participantSummary[$pid] ?? ['approved' => 0, 'pending' => 0];
+            $committeeData = $committeeSummary[$pid] ?? ['approved' => 0, 'pending' => 0];
+
+            $event['participants_approved'] = $participantData['approved'] ?? 0;
+            $event['participants_pending'] = $participantData['pending'] ?? 0;
+            $event['committees_approved'] = $committeeData['approved'] ?? 0;
+            $event['committees_pending'] = $committeeData['pending'] ?? 0;
+        }
+        unset($event);
+
+        view('events/manage/index', [
+            'title' => 'Kelola Event',
+            'events' => $events,
+        ]);
+    }
+
+    public function create(): void
+    {
+        $errors = flash('errors') ?? [];
+
+        view('events/manage/create', [
+            'title' => 'Tambah Event',
+            'errors' => $errors,
+            'statuses' => self::STATUS_OPTIONS,
+        ]);
+    }
+
+    public function store(): void
+    {
+        $input = $this->sanitizeInput($_POST);
+
+        $validator = new Validator();
+        $isValid = $validator->validate($input, [
+            'name' => 'required|min:3|max:150',
+            'description' => 'required|min:10',
+            'location' => 'required|min:3|max:150',
+            'event_date' => 'required',
+            'participant_quota' => 'required|numeric',
+            'committee_quota' => 'required|numeric',
+            'status' => 'required',
+        ]);
+
+        $errors = $validator->errors();
+
+        if (!in_array($input['status'], self::STATUS_OPTIONS, true)) {
+            $errors['status'][] = 'Status tidak dikenal.';
+        }
+
+        if (!$this->validateQuota((string) $input['participant_quota'])) {
+            $errors['participant_quota'][] = 'Kuota peserta harus angka minimal 1.';
+        }
+
+        if (!$this->validateQuota((string) $input['committee_quota'])) {
+            $errors['committee_quota'][] = 'Kuota panitia harus angka minimal 1.';
+        }
+
+        $start = $this->parseDateTime($input['registration_start']);
+        $end = $this->parseDateTime($input['registration_end']);
+        if ($start !== null && $end !== null && $end < $start) {
+            $errors['registration_end'][] = 'Periode akhir harus sesudah periode mulai.';
+        }
+
+        if (!empty($errors)) {
+            Session::flash('errors', $errors);
+            Session::flash('error', 'Gagal menyimpan event. Silakan periksa kembali input Anda.');
+            Session::flashInput($input);
+            Response::redirect('/manage/events/create');
+        }
+
+        try {
+            Event::create([
+                'name' => $input['name'],
+                'description' => $input['description'],
+                'location' => $input['location'],
+                'event_date' => $this->formatDate($input['event_date']),
+                'participant_quota' => (int) $input['participant_quota'],
+                'committee_quota' => (int) $input['committee_quota'],
+                'registration_start' => $this->formatDateTimeForDb($start),
+                'registration_end' => $this->formatDateTimeForDb($end),
+                'status' => $input['status'],
+            ]);
+        } catch (Exception $exception) {
+            Session::flash('error', 'Terjadi kesalahan saat menyimpan event.');
+            logger('Create event failed: ' . $exception->getMessage());
+            Session::flashInput($input);
+            Response::redirect('/manage/events/create');
+        }
+
+        Session::flash('success', 'Event berhasil ditambahkan.');
+        Response::redirect('/manage/events');
+    }
+
+    public function edit(): void
+    {
+        $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+        if ($id <= 0) {
+            Response::redirect('/manage/events');
+        }
+
+        $event = Event::find($id);
+        if ($event === null) {
+            Session::flash('error', 'Event tidak ditemukan.');
+            Response::redirect('/manage/events');
+        }
+
+        $errors = flash('errors') ?? [];
+
+        view('events/manage/edit', [
+            'title' => 'Ubah Event',
+            'event' => $event,
+            'errors' => $errors,
+            'statuses' => self::STATUS_OPTIONS,
+        ]);
+    }
+
+    public function update(): void
+    {
+        $id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+        if ($id <= 0) {
+            Session::flash('error', 'ID event tidak valid.');
+            Response::redirect('/manage/events');
+        }
+
+        $event = Event::find($id);
+        if ($event === null) {
+            Session::flash('error', 'Event tidak ditemukan.');
+            Response::redirect('/manage/events');
+        }
+
+        $input = $this->sanitizeInput($_POST);
+
+        $validator = new Validator();
+        $isValid = $validator->validate($input, [
+            'name' => 'required|min:3|max:150',
+            'description' => 'required|min:10',
+            'location' => 'required|min:3|max:150',
+            'event_date' => 'required',
+            'participant_quota' => 'required|numeric',
+            'committee_quota' => 'required|numeric',
+            'status' => 'required',
+        ]);
+
+        $errors = $validator->errors();
+
+        if (!in_array($input['status'], self::STATUS_OPTIONS, true)) {
+            $errors['status'][] = 'Status tidak dikenal.';
+        }
+
+        if (!$this->validateQuota((string) $input['participant_quota'])) {
+            $errors['participant_quota'][] = 'Kuota peserta harus angka minimal 1.';
+        }
+
+        if (!$this->validateQuota((string) $input['committee_quota'])) {
+            $errors['committee_quota'][] = 'Kuota panitia harus angka minimal 1.';
+        }
+
+        $start = $this->parseDateTime($input['registration_start']);
+        $end = $this->parseDateTime($input['registration_end']);
+        if ($start !== null && $end !== null && $end < $start) {
+            $errors['registration_end'][] = 'Periode akhir harus sesudah periode mulai.';
+        }
+
+        if (!empty($errors)) {
+            Session::flash('errors', $errors);
+            Session::flash('error', 'Gagal memperbarui event. Silakan periksa kembali input Anda.');
+            Session::flashInput($input);
+            Response::redirect('/manage/events/edit?id=' . $id);
+        }
+
+        try {
+            Event::update($id, [
+                'name' => $input['name'],
+                'description' => $input['description'],
+                'location' => $input['location'],
+                'event_date' => $this->formatDate($input['event_date']),
+                'participant_quota' => (int) $input['participant_quota'],
+                'committee_quota' => (int) $input['committee_quota'],
+                'registration_start' => $this->formatDateTimeForDb($start),
+                'registration_end' => $this->formatDateTimeForDb($end),
+                'status' => $input['status'],
+            ]);
+        } catch (Exception $exception) {
+            Session::flash('error', 'Terjadi kesalahan saat memperbarui event.');
+            logger('Update event failed: ' . $exception->getMessage());
+            Session::flashInput($input);
+            Response::redirect('/manage/events/edit?id=' . $id);
+        }
+
+        Session::flash('success', 'Event berhasil diperbarui.');
+        Response::redirect('/manage/events');
+    }
+
+    public function destroy(): void
+    {
+        $id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+        if ($id <= 0) {
+            Session::flash('error', 'ID event tidak valid.');
+            Response::redirect('/manage/events');
+        }
+
+        try {
+            Event::delete($id);
+        } catch (Exception $exception) {
+            Session::flash('error', 'Gagal menghapus event. Pastikan tidak ada data terkait.');
+            logger('Delete event failed: ' . $exception->getMessage());
+            Response::redirect('/manage/events');
+        }
+
+        Session::flash('success', 'Event berhasil dihapus.');
+        Response::redirect('/manage/events');
+    }
+
+    private function sanitizeInput(array $input): array
+    {
+        return [
+            'id' => isset($input['id']) ? (int) $input['id'] : null,
+            'name' => trim((string) ($input['name'] ?? '')),
+            'description' => trim((string) ($input['description'] ?? '')),
+            'location' => trim((string) ($input['location'] ?? '')),
+            'event_date' => trim((string) ($input['event_date'] ?? '')),
+            'participant_quota' => trim((string) ($input['participant_quota'] ?? '')),
+            'committee_quota' => trim((string) ($input['committee_quota'] ?? '')),
+            'registration_start' => trim((string) ($input['registration_start'] ?? '')),
+            'registration_end' => trim((string) ($input['registration_end'] ?? '')),
+            'status' => trim((string) ($input['status'] ?? 'draft')),
+        ];
+    }
+
+    private function parseDateTime(string $value): ?DateTimeImmutable
+    {
+        if ($value === '') {
+            return null;
+        }
+
+        $value = str_replace(' ', 'T', $value);
+
+        try {
+            $format = str_contains($value, 'T') ? 'Y-m-d\TH:i' : 'Y-m-d H:i:s';
+            $date = DateTimeImmutable::createFromFormat($format, $value);
+            return $date ?: null;
+        } catch (Exception) {
+            return null;
+        }
+    }
+
+    private function formatDateTimeForDb(?DateTimeImmutable $dateTime): ?string
+    {
+        return $dateTime?->format('Y-m-d H:i:s');
+    }
+
+    private function formatDate(string $value): ?string
+    {
+        if ($value === '') {
+            return null;
+        }
+
+        try {
+            $date = new DateTimeImmutable($value);
+            return $date->format('Y-m-d');
+        } catch (Exception) {
+            return null;
+        }
+    }
+
+    private function validateQuota(string $value): bool
+    {
+        if (!is_numeric($value)) {
+            return false;
+        }
+
+        return (int) $value >= 1;
+    }
+}

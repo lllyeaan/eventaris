@@ -1,0 +1,25 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs and runtime data
+storage/logs/*.log
+storage/logs/*.txt
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Dependency directories
+vendor/
+node_modules/
+
+# IDE / editor folders
+.idea/
+.vscode/
+
+# Misc
+*.bak
+*.tmp
+*.swp
